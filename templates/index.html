@@ -66,9 +66,19 @@ tr:hover td{background:#e6f7ff}
 .summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
 .summary-card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.06);text-align:center}
 .summary-card .value{font-size:28px;font-weight:700;color:#1890ff}
-.summary-card .label{font-size:12px;color:#888;margin-top:4px}</style></head><body>
+.summary-card .label{font-size:12px;color:#888;margin-top:4px}
+.captcha-img{height:34px;min-width:96px;border:1px solid #d9d9d9;border-radius:6px;background:#fafafa;object-fit:contain;cursor:pointer}
+.login-hint{font-size:12px;color:#888;align-self:center;padding-bottom:9px}</style></head><body>
 <div class="header"><h1>📊 广告创意消耗监控面板</h1><div class="status"><span id="statusText">就绪</span><span class="status-dot offline" id="statusDot"></span></div></div>
 <div class="container">
+<div class="panel"><div class="panel-header">🔐 登录获取 Token</div><div class="panel-body"><div class="form-row">
+<div class="form-group"><label>账号</label><input type="text" id="loginUsername" placeholder="输入 ad.adintl.cn 账号" style="min-width:220px"></div>
+<div class="form-group"><label>密码</label><input type="password" id="loginPassword" placeholder="输入密码" style="min-width:220px"></div>
+<div class="form-group"><label>验证码</label><input type="text" id="loginCaptcha" placeholder="验证码" class="small"></div>
+<div class="form-group"><label>点击刷新</label><img id="captchaImage" class="captcha-img" onclick="refreshLoginCaptcha()" alt="验证码"></div>
+<div class="form-group" style="align-self:flex-end"><button class="btn btn-default" type="button" onclick="refreshLoginCaptcha()">刷新验证码</button><button class="btn btn-success" id="btnLogin" type="button" onclick="loginAndFillToken()">登录并填入 Token</button></div>
+<div class="login-hint" id="loginHint">登录成功后会自动填入下面的 X-Access-Token。</div>
+</div></div></div>
 <div class="panel"><div class="panel-header">⚙️ 配置</div><div class="panel-body"><div class="form-row">
 <div class="form-group"><label>X-Access-Token *</label><input type="text" id="token" placeholder="输入 access token" style="min-width:360px"></div>
 <div class="form-group"><label>代理 / Base URL</label><input type="text" id="baseUrl" value="/api" style="min-width:240px"></div>
@@ -156,6 +166,7 @@ var baseUrl = '';
 var token = '';
 var advertiserId = '';
 var stoppedIds = {};
+var loginCheckKey = '';
 window._rankedData = [];
 
 // ==================== UI辅助 ====================
@@ -186,6 +197,77 @@ function switchTab(tab){
   if(tab === 'total'){ document.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('tabTotal').style.display=''; }
   else if(tab === 'daily'){ document.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('tabDaily').style.display=''; }
   else if(tab === 'log'){ document.querySelectorAll('.tab')[2].classList.add('active'); document.getElementById('tabLog').style.display=''; }
+}
+
+function getConfiguredBaseUrl(){
+  var input = document.getElementById('baseUrl');
+  var value = input ? input.value.trim() : '';
+  return (value || '/api').replace(/\/+$/,'');
+}
+
+async function refreshLoginCaptcha(){
+  loginCheckKey = String(Date.now());
+  var img = document.getElementById('captchaImage');
+  var hint = document.getElementById('loginHint');
+  if(hint) hint.textContent = '正在刷新验证码...';
+  try {
+    var resp = await fetch(getConfiguredBaseUrl() + '/jeecg-boot/sys/randomImage/' + loginCheckKey, {
+      headers: { 'Accept': 'application/json' }
+    });
+    var data = await resp.json();
+    if(!data.success) throw new Error(data.message || '验证码获取失败');
+    if(img) img.src = data.result;
+    if(hint) hint.textContent = '请输入账号、密码和验证码后登录。';
+  } catch(e) {
+    if(hint) hint.textContent = '验证码获取失败: ' + e.message;
+    log('验证码获取失败: ' + e.message, 'error');
+  }
+}
+
+async function loginAndFillToken(){
+  var username = document.getElementById('loginUsername').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var captcha = document.getElementById('loginCaptcha').value.trim();
+  var hint = document.getElementById('loginHint');
+  var btn = document.getElementById('btnLogin');
+  if(!username || !password || !captcha){ alert('请输入账号、密码和验证码'); return; }
+  if(!loginCheckKey){ await refreshLoginCaptcha(); }
+  if(btn) btn.disabled = true;
+  if(hint) hint.textContent = '正在登录...';
+  try {
+    var resp = await fetch(getConfiguredBaseUrl() + '/jeecg-boot/sys/login', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json;charset=UTF-8'
+      },
+      body: JSON.stringify({
+        username: username,
+        password: password,
+        captcha: captcha,
+        checkKey: loginCheckKey,
+        remember_me: true,
+        dspDeclaration: true
+      })
+    });
+    var data = await resp.json();
+    if(!(data.success || data.code == 200 || data.code == '200')) throw new Error(data.message || '登录失败');
+    var result = data.result || {};
+    var newToken = result.token || data.token;
+    if(!newToken) throw new Error('登录成功但返回中没有 token');
+    document.getElementById('token').value = newToken;
+    document.getElementById('loginPassword').value = '';
+    document.getElementById('loginCaptcha').value = '';
+    if(hint) hint.textContent = '登录成功，Token 已填入。';
+    log('登录成功，Token 已自动填入', 'success');
+    await refreshLoginCaptcha();
+  } catch(e) {
+    if(hint) hint.textContent = '登录失败: ' + e.message;
+    log('登录失败: ' + e.message, 'error');
+    await refreshLoginCaptcha();
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 // ==================== API请求 ====================
@@ -445,6 +527,10 @@ function stopMonitor(){
   setStatus('已停止', 'offline');
   log('⏸ 监控已停止', 'info');
 }
+
+document.addEventListener('DOMContentLoaded', function(){
+  refreshLoginCaptcha();
+});
 
 </script>
 </body></html>
