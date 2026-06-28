@@ -61,3 +61,34 @@ https://octopus-monitor-site.onrender.com/
 ## 安全提醒
 
 这个网站有广告数据读取和停止投放能力。仓库建议设为 Private，Render 网站一定设置 `SITE_USERNAME` 和 `SITE_PASSWORD`。
+
+## 虚拟主机部署
+
+只有支持 Python Web 应用的虚拟主机才能部署本项目。后台通常会有类似 `Setup Python App`、`Python Selector`、`Passenger`、`WSGI` 的功能。
+
+如果虚拟主机只支持上传 `html/php`，不能运行 Python 常驻 Web 服务，就不能部署这个项目，因为 `/api` 代理必须由 Python 后端处理。
+
+常见 cPanel Python App 步骤：
+
+1. 进入 cPanel，打开 `Setup Python App`。
+2. Python 版本选择 `3.10`、`3.11` 或 `3.12`。
+3. Application root 指向项目目录，例如：`octopus-monitor-site`。
+4. Application URL 选择你的域名或子目录。
+5. Application startup file 填：`passenger_wsgi.py`。
+6. Application Entry point 填：`application`。
+7. 进入虚拟环境后安装依赖：
+
+```bash
+pip install -r requirements.txt
+```
+
+8. 设置环境变量：
+
+```text
+SITE_USERNAME=你自己设置的用户名
+SITE_PASSWORD=你自己设置的密码
+```
+
+9. 点击 Restart/Reload App。
+
+如果后台没有环境变量设置入口，可以先不设置 `SITE_USERNAME` 和 `SITE_PASSWORD` 测试页面是否能打开，但正式使用不建议裸奔。
