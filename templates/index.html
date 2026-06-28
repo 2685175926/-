@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>广告创意消耗监控 - ad.adintl.cn</title><style>*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#333;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:20px;font-weight:600}
+.header .status{font-size:13px;display:flex;align-items:center;gap:8px}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.status-dot.online{background:#52c41a;box-shadow:0 0 6px #52c41a}
+.status-dot.offline{background:#ff4d4f}
+.status-dot.loading{background:#faad14;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.container{max-width:1600px;margin:0 auto;padding:20px}
+.panel{background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px}
+.panel-header{padding:12px 20px;border-bottom:1px solid #f0f0f0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.panel-body{padding:16px 20px}
+.form-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:12px;color:#888;font-weight:500}
+.form-group input,.form-group select{padding:8px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;outline:none;transition:border-color .2s;min-width:120px}
+.form-group input:focus{border-color:#1890ff;box-shadow:0 0 0 2px rgba(24,144,255,.2)}
+.form-group input.small{min-width:80px;width:80px}
+.btn{padding:8px 20px;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1890ff;color:#fff}
+.btn-primary:hover{background:#40a9ff}
+.btn-danger{background:#ff4d4f;color:#fff}
+.btn-danger:hover{background:#ff7875}
+.btn-success{background:#52c41a;color:#fff}
+.btn-success:hover{background:#73d13d}
+.btn-default{background:#fff;color:#333;border:1px solid #d9d9d9}
+.btn-default:hover{border-color:#1890ff;color:#1890ff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.tabs{display:flex;gap:0;border-bottom:2px solid #f0f0f0;margin-bottom:16px}
+.tab{padding:10px 20px;cursor:pointer;font-size:14px;font-weight:500;color:#888;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s}
+.tab.active{color:#1890ff;border-bottom-color:#1890ff}
+.tab:hover{color:#1890ff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#fafafa;padding:10px 12px;text-align:left;font-weight:600;color:#555;border-bottom:1px solid #e8e8e8;white-space:nowrap;position:sticky;top:0;z-index:1}
+td{padding:8px 12px;border-bottom:1px solid #f0f0f0}
+tr:hover td{background:#e6f7ff}
+.rank{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:12px;font-weight:700}
+.rank-1{background:#ffd700;color:#333}
+.rank-2{background:#c0c0c0;color:#333}
+.rank-3{background:#cd7f32;color:#fff}
+.rank-other{background:#f0f0f0;color:#888}
+.num{font-family:"SF Mono","Consolas","Monaco",monospace;text-align:right}
+.alert-row{background:#fff2f0!important}
+.alert-row td{color:#cf1322;font-weight:600}
+.stopped-row{background:#f6ffed!important}
+.stopped-row td{color:#389e0d}
+.table-wrap{max-height:500px;overflow-y:auto;border:1px solid #f0f0f0;border-radius:6px}
+.log-list{max-height:200px;overflow-y:auto;font-size:12px;font-family:"SF Mono","Consolas",monospace}
+.log-item{padding:4px 0;border-bottom:1px solid #f5f5f5;display:flex;gap:8px}
+.log-time{color:#888;flex-shrink:0}
+.log-error{color:#ff4d4f}
+.log-success{color:#52c41a}
+.log-warn{color:#faad14}
+.log-info{color:#1890ff}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+.badge-active{background:#f6ffed;color:#52c41a;border:1px solid #b7eb8f}
+.badge-stopped{background:#fff2f0;color:#ff4d4f;border:1px solid #ffccc7}
+.badge-warning{background:#fffbe6;color:#faad14;border:1px solid #ffe58f}
+.summary-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.summary-card{background:#fff;border-radius:8px;padding:16px;box-shadow:0 2px 6px rgba(0,0,0,.06);text-align:center}
+.summary-card .value{font-size:28px;font-weight:700;color:#1890ff}
+.summary-card .label{font-size:12px;color:#888;margin-top:4px}</style></head><body>
+<div class="header"><h1>📊 广告创意消耗监控面板</h1><div class="status"><span id="statusText">就绪</span><span class="status-dot offline" id="statusDot"></span></div></div>
+<div class="container">
+<div class="panel"><div class="panel-header">⚙️ 配置</div><div class="panel-body"><div class="form-row">
+<div class="form-group"><label>X-Access-Token *</label><input type="text" id="token" placeholder="输入 access token" style="min-width:360px"></div>
+<div class="form-group"><label>代理 / Base URL</label><input type="text" id="baseUrl" value="/api" style="min-width:240px"></div>
+<div class="form-group"><label>Advertiser ID</label><input type="text" id="advertiserId" value="2099" class="small"></div>
+<div class="form-group"><label>轮询间隔 (秒)</label><input type="number" id="interval" value="30" min="5" class="small"></div>
+<div class="form-group"><label>加载条数</label><input type="number" id="topN" value="5" min="1" class="small"></div>
+<div class="form-group" style="align-self:flex-end"><button class="btn btn-primary" id="btnStart" onclick="startMonitor()">▶ 开始监控</button><button class="btn btn-danger" id="btnStop" onclick="stopMonitor()" disabled>⏹ 停止</button></div>
+</div></div></div>
+<div class="panel"><div class="panel-header">🎯 阈值监控 & 自动停止</div><div class="panel-body"><div class="form-row">
+<div class="form-group"><label>消耗阈值 (元)</label><input type="number" id="threshold" value="100" min="1" step="0.01" style="min-width:120px"></div>
+<div class="form-group"><label>检查模式</label><select id="checkMode" style="min-width:160px"><option value="4day">近4日消耗超阈值</option></select></div>
+<div class="form-group" style="align-self:flex-end"><label style="visibility:hidden">.</label><div style="display:flex;gap:8px"><button class="btn btn-success" id="btnCheck" onclick="checkThreshold()" disabled>🔍 手动检查一次</button><label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="autoStop" checked> 自动停止投放</label></div></div>
+</div></div></div>
+<div class="summary-cards" id="summaryCards"></div>
+<div class="panel"><div class="panel-header"><span>📋 数据视图</span><div class="tabs" style="margin-left:24px;margin-bottom:0"><div class="tab active" onclick="switchTab('total')">总消耗排行</div><div class="tab" onclick="switchTab('daily')">近4日消耗明细</div><div class="tab" onclick="switchTab('log')">监控日志</div></div><span style="margin-left:auto;font-size:12px;color:#888" id="lastUpdate"></span></div><div class="panel-body">
+<div id="tabTotal" class="tab-content"><div class="table-wrap"><table id="totalTable"><thead><tr><th>排行</th><th>创意ID</th><th>标题</th><th>总消耗(元)</th><th>总展示</th><th>总点击</th><th>点击率</th><th>点击成本</th><th>状态</th></tr></thead><tbody id="totalTbody"><tr><td colspan="9" style="text-align:center;color:#999;padding:40px">等待数据加载...</td></tr></tbody></table></div></div>
+<div id="tabDaily" class="tab-content" style="display:none"><div class="table-wrap"><table id="dailyTable"><thead><tr><th>创意ID</th><th>标题</th><th>日期</th><th>消耗(元)</th><th>展示</th><th>点击</th><th>点击率</th><th>CPC</th><th>CPM</th></tr></thead><tbody id="dailyTbody"><tr><td colspan="9" style="text-align:center;color:#999;padding:40px">等待数据加载...</td></tr></tbody></table></div></div>
+<div id="tabLog" class="tab-content" style="display:none"><div class="log-list" id="logList"><div style="color:#999">暂无日志</div></div></div>
+</div></div>
+</div>
+<script>
+// ==================== MD5 (Pure JS) ====================
+var MD5=function(r){function rotl(r,n){return r<<n|r>>>32-n}function t(r,n){var t,o,e,f,u;return e=2147483648&r,f=2147483648&n,t=1073741824&r,o=1073741824&n,u=(1073741823&r)+(1073741823&n),t&o?2147483648^u^e^f:t|o?1073741824&u?3221225472^u^e^f:1073741824^u^e^f:u^e^f}function o(r,n,o,e,f,u,h){return r=t(r,t(t(n&o|~n&e,f),h)),t(rotl(r,u),n)}function e(r,n,o,e,f,u,h){return r=t(r,t(t(n&e|o&~e,f),h)),t(rotl(r,u),n)}function f(r,n,o,e,f,u,h){return r=t(r,t(t(n^o^e,f),h)),t(rotl(r,u),n)}function u(r,n,o,e,f,u,h){return r=t(r,t(t(o^(n|~e),f),h)),t(rotl(r,u),n)}function h(r,n){r[n>>5]|=128<<n%32,r[14+(n+64>>>9<<4)]=n;var h,a,i,c,d,g=1732584193,v=-271733879,C=-1732584194,A=271733878;for(h=0;h<r.length;h+=16)a=g,i=v,c=C,d=A,g=o(g,v,C,A,r[h],7,-680876936),A=o(A,g,v,C,r[h+1],12,-389564586),C=o(C,A,g,v,r[h+2],17,606105819),v=o(v,C,A,g,r[h+3],22,-1044525330),g=o(g,v,C,A,r[h+4],7,-176418897),A=o(A,g,v,C,r[h+5],12,1200080426),C=o(C,A,g,v,r[h+6],17,-1473231341),v=o(v,C,A,g,r[h+7],22,-45705983),g=o(g,v,C,A,r[h+8],7,1770035416),A=o(A,g,v,C,r[h+9],12,-1958414417),C=o(C,A,g,v,r[h+10],17,-42063),v=o(v,C,A,g,r[h+11],22,-1990404162),g=o(g,v,C,A,r[h+12],7,1804603682),A=o(A,g,v,C,r[h+13],12,-40341101),C=o(C,A,g,v,r[h+14],17,-1502002290),v=o(v,C,A,g,r[h+15],22,1236535329),g=e(g,v,C,A,r[h+1],5,-165796510),A=e(A,g,v,C,r[h+6],9,-1069501632),C=e(C,A,g,v,r[h+7],14,643717713),v=e(v,C,A,g,r[h],20,-373897302),g=e(g,v,C,A,r[h+5],5,-701558691),A=e(A,g,v,C,r[h+10],9,38016083),C=e(C,A,g,v,r[h+15],14,-660478335),v=e(v,C,A,g,r[h+4],20,-405537848),g=e(g,v,C,A,r[h+9],5,568446438),A=e(A,g,v,C,r[h+14],9,-1019803690),C=e(C,A,g,v,r[h+3],14,-187363961),v=e(v,C,A,g,r[h+8],20,1163531501),g=e(g,v,C,A,r[h+13],5,-1444681467),A=e(A,g,v,C,r[h+2],9,-51403784),C=e(C,A,g,v,r[h+7],14,1735328473),v=e(v,C,A,g,r[h+12],20,-1926607734),g=f(g,v,C,A,r[h+5],4,-378558),A=f(A,g,v,C,r[h+8],11,-2022574463),C=f(C,A,g,v,r[h+11],16,1839030562),v=f(v,C,A,g,r[h+14],23,-35309556),g=f(g,v,C,A,r[h+1],4,-1530992060),A=f(A,g,v,C,r[h+4],11,1272893353),C=f(C,A,g,v,r[h+7],16,-155497632),v=f(v,C,A,g,r[h+10],23,-1094730640),g=f(g,v,C,A,r[h+13],4,681279174),A=f(A,g,v,C,r[h],11,-358537222),C=f(C,A,g,v,r[h+3],16,-722521979),v=f(v,C,A,g,r[h+6],23,76029189),g=f(g,v,C,A,r[h+9],4,-640364487),A=f(A,g,v,C,r[h+12],11,-421815835),C=f(C,A,g,v,r[h+15],16,530742520),v=f(v,C,A,g,r[h+2],23,-995338651),g=u(g,v,C,A,r[h],6,-198630844),A=u(A,g,v,C,r[h+7],10,1126891415),C=u(C,A,g,v,r[h+14],15,-1416354905),v=u(v,C,A,g,r[h+5],21,-57434055),g=u(g,v,C,A,r[h+12],6,1700485571),A=u(A,g,v,C,r[h+3],10,-1894986606),C=u(C,A,g,v,r[h+10],15,-1051523),v=u(v,C,A,g,r[h+1],21,-2054922799),g=u(g,v,C,A,r[h+8],6,1873313359),A=u(A,g,v,C,r[h+15],10,-30611744),C=u(C,A,g,v,r[h+6],15,-1560198380),v=u(v,C,A,g,r[h+13],21,1309151649),g=u(g,v,C,A,r[h+4],6,-145523070),A=u(A,g,v,C,r[h+11],10,-1120210379),C=u(C,A,g,v,r[h+2],15,718787259),v=u(v,C,A,g,r[h+9],21,-343485551),g=t(g,a),v=t(v,i),C=t(C,c),A=t(A,d);return[g,v,C,A]}function a(r){var n,t="",o=32*r.length;for(n=0;n<o;n+=8)t+=String.fromCharCode(r[n>>5]>>>n%32&255);return t}function i(r){var n,t=[];for(t[(r.length>>2)-1]=void 0,n=0;n<t.length;n+=1)t[n]=0;var o=8*r.length;for(n=0;n<o;n+=8)t[n>>5]|=(255&r.charCodeAt(n/8))<<n%32;return t}function c(r){var n,t,o="";for(t=0;t<r.length;t+=1)n=r.charCodeAt(t),o+="0123456789abcdef".charAt(n>>>4&15)+"0123456789abcdef".charAt(15&n);return o}function d(r){return unescape(encodeURIComponent(r))}return function(r){return c(a(h(i(d(r)),8*r.length)))}}(function(){return this}());
+
+// ==================== X-Sign Algorithm ====================
+var SALT = "dd05f1c54d63749eda95f9fa6d49v442a";
+
+function myIsNaN(val){ return typeof val === 'number' && !isNaN(val); }
+
+function parseQueryString(url){
+  var result = {};
+  var qsIndex = url.indexOf('?');
+  if(qsIndex >= 0){
+    var qs = url.substring(qsIndex + 1);
+    var regex = /([^&=]+)=([\w\W]*?)(&|$|#)/g;
+    var match;
+    while((match = regex.exec(qs)) !== null){
+      var val = match[2];
+      if(myIsNaN(Number(val))) val = val.toString();
+      result[match[1]] = val;
+    }
+  }
+  var pathNoQS = qsIndex >= 0 ? url.substring(0, qsIndex) : url;
+  var lastSeg = pathNoQS.substring(pathNoQS.lastIndexOf('/') + 1);
+  if(lastSeg.includes(',')){
+    if(lastSeg.includes('?')) lastSeg = lastSeg.substring(0, lastSeg.indexOf('?'));
+    result["x-path-variable"] = decodeURIComponent(lastSeg);
+  }
+  return result;
+}
+
+function mergeObject(obj1, obj2){
+  var result = {};
+  for(var k in obj1){ if(obj1.hasOwnProperty(k)) result[k] = obj1[k]; }
+  if(obj2 && Object.keys(obj2).length > 0){
+    for(var key in obj2){
+      if(obj2.hasOwnProperty(key)){
+        var val = obj2[key];
+        if(myIsNaN(val)) val = val.toString();
+        result[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
+function sortAsc(obj){
+  var keys = Object.keys(obj).sort();
+  var sorted = {};
+  for(var i = 0; i < keys.length; i++) sorted[keys[i]] = obj[keys[i]];
+  return sorted;
+}
+
+function getSign(url, data){
+  var p = parseQueryString(url);
+  var m = mergeObject(p, data || null);
+  var s = sortAsc(m);
+  return MD5(JSON.stringify(s) + SALT).toUpperCase();
+}
+
+function getTimestamp(){ return String(Date.now()); }
+
+// ==================== 全局状态 ====================
+var baseUrl = '';
+var token = '';
+var advertiserId = '';
+var stoppedIds = {};
+window._rankedData = [];
+
+// ==================== UI辅助 ====================
+function setStatus(s, cls){
+  var t = {'online':'在线','offline':'就绪','loading':'加载中...'}[cls]||'';
+  document.getElementById('statusText').textContent = (s||t);
+  var dot = document.getElementById('statusDot');
+  dot.className = 'status-dot ' + cls;
+}
+
+function log(msg, type){
+  var lst = document.getElementById('logList');
+  if(lst.children[0] && lst.children[0].textContent === '暂无日志') lst.innerHTML = '';
+  var now = new Date();
+  var time = now.toTimeString().substring(0,8);
+  var div = document.createElement('div');
+  div.className = 'log-item';
+  div.innerHTML = '<span class="log-time">'+time+'</span><span class="log-'+type+'">'+msg+'</span>';
+  lst.insertBefore(div, lst.firstChild);
+  if(lst.children.length > 500) lst.removeChild(lst.lastChild);
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.getElementById('tabTotal').style.display='none';
+  document.getElementById('tabDaily').style.display='none';
+  document.getElementById('tabLog').style.display='none';
+  if(tab === 'total'){ document.querySelectorAll('.tab')[0].classList.add('active'); document.getElementById('tabTotal').style.display=''; }
+  else if(tab === 'daily'){ document.querySelectorAll('.tab')[1].classList.add('active'); document.getElementById('tabDaily').style.display=''; }
+  else if(tab === 'log'){ document.querySelectorAll('.tab')[2].classList.add('active'); document.getElementById('tabLog').style.display=''; }
+}
+
+// ==================== API请求 ====================
+var requestId = 0;
+
+async function apiGet(path, params){
+  var reqId = ++requestId;
+  var sign = getSign(path, params || null);
+  var ts = getTimestamp();
+  var fullUrl = baseUrl + path;
+  if(params){
+    var qs = Object.keys(params).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(params[k]);}).join('&');
+    fullUrl += '?' + qs;
+  }
+  var resp = await fetch(fullUrl, {
+    headers: {
+      'Accept': 'application/json',
+      'X-Access-Token': token,
+      'X-Sign': sign,
+      'X-TIMESTAMP': ts,
+      'advertiserId': advertiserId,
+      'tenant-id': '0'
+    }
+  });
+  var data;
+  try { data = await resp.json(); } catch(e) { throw new Error('响应非JSON (状态:'+resp.status+'): '+ (await resp.text()).substring(0,200)); }
+  if(!data.success) throw new Error((data.message||'API错误') + ' (code:'+(data.code||resp.status)+')');
+  return data.result;
+}
+
+async function apiPost(path, body){
+  var sign = getSign(path, body);
+  var ts = getTimestamp();
+  var fullUrl = baseUrl + path;
+  var resp = await fetch(fullUrl, {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json;charset=UTF-8',
+      'X-Access-Token': token,
+      'X-Sign': sign,
+      'X-TIMESTAMP': ts,
+      'advertiserId': advertiserId,
+      'tenant-id': '0'
+    },
+    body: JSON.stringify(body)
+  });
+  var data = await resp.json();
+  if(!data.success) throw new Error(data.message || 'API error');
+  return data.result;
+}
+
+// ==================== 数据获取 ====================
+async function fetchAllData(){
+  setStatus('加载中...', 'loading');
+  var today = new Date().toISOString().substring(0,10);
+
+  // 获取总消耗 (material list) - 分页
+  var totalData = [];
+  var pageNo = 1, hasMore = true;
+  var loadLimit = parseInt(document.getElementById('topN').value) || 5;
+  while(hasMore && totalData.length < loadLimit){
+    var remaining = loadLimit - totalData.length;
+    var ps = Math.min(remaining, 100);
+    var totalResult = await apiGet('/jeecg-boot/ad/adcreative/material/list', {
+      column: 'createdAt', order: 'desc',
+      field: 'id,,,id,title,status_dictText,deeplink,landingPage,allConsume,allImp,allClick,clickRate,clickCost,clkLimit,action',
+      pageNo: String(pageNo), pageSize: String(ps)
+    });
+    var records = totalResult.records || [];
+    totalData = totalData.concat(records);
+    pageNo++;
+    if(records.length < ps) hasMore = false;
+    log('获取总消耗第'+(pageNo-1)+'页: '+records.length+'条 (已加载'+totalData.length+'/'+loadLimit+')', 'info');
+  }
+
+  // 获取近4日消耗 (今天 + 前3天)
+  var dailyData = [];
+    var todayDate = new Date(today + 'T00:00:00+08:00');
+  var startDate = new Date(todayDate);
+  startDate.setDate(startDate.getDate() - 3);
+  var rangeStart = startDate.toISOString().substring(0,10);
+  log('读取日期范围: ' + rangeStart + ' ~ ' + today, 'info');
+  var loadLimit = parseInt(document.getElementById('topN').value) || 5;
+  pageNo = 1; hasMore = true;
+  while(hasMore && dailyData.length < loadLimit){
+    var ps = Math.min(loadLimit - dailyData.length, 100);
+    var dailyResult = await apiGet('/jeecg-boot/report/materialReport/list', {
+      startDate: rangeStart, endDate: today,
+      column: 'id', order: 'desc',
+      field: 'dat,title,materialId,imp,clk,consume',
+      pageNo: String(pageNo), pageSize: String(ps)
+    });
+    records = dailyResult.records || [];
+    dailyData = dailyData.concat(records);
+    pageNo++;
+    if(records.length < ps) hasMore = false;
+    log('获取近4日消耗第'+(pageNo-1)+'页: '+records.length+'条', 'info');
+  }
+
+  // 汇总近4日消耗 (过滤合计行)
+  var dailyAgg = {};
+  for(var i = 0; i < dailyData.length; i++){
+    var d = dailyData[i];
+    var mid = d.materialId || d.id;
+    if(mid === '合计' || !mid) continue;
+    if(!dailyAgg[mid]) dailyAgg[mid] = {materialId: mid, title: d.title, consume: 0, imp: 0, clk: 0};
+    dailyAgg[mid].consume += Number(d.consume||0);
+    dailyAgg[mid].imp += Number(d.imp||0);
+    dailyAgg[mid].clk += Number(d.clk||0);
+  }
+
+  // 合并总消耗 + 每日
+  var merged = {};
+  for(i = 0; i < totalData.length; i++){
+    var t = totalData[i];
+    var tid = String(t.id);
+    merged[tid] = {
+      id: tid, title: t.title || '',
+      status: t.status_dictText || '', statusCode: t.status || '',
+      allConsume: Number(t.allConsume||0), allImp: Number(t.allImp||0),
+      allClick: Number(t.allClick||0), clickRate: t.clickRate||'0', clickCost: t.clickCost||'0',
+      todayConsume: 0, todayImp: 0, todayClick: 0
+    };
+  }
+  for(var mid in dailyAgg){
+    if(!merged[mid]){
+      merged[mid] = {id: mid, title: dailyAgg[mid].title, status: '未知', statusCode: '1',
+        allConsume: 0, allImp: 0, allClick: 0, clickRate:'0', clickCost:'0',
+        todayConsume: 0, todayImp: 0, todayClick: 0};
+    }
+    merged[mid].todayConsume = dailyAgg[mid].consume;
+    merged[mid].todayImp = dailyAgg[mid].imp;
+    merged[mid].todayClick = dailyAgg[mid].clk;
+  }
+
+  var ranked = Object.values(merged).sort(function(a,b){return b.allConsume - a.allConsume;});
+  window._rankedData = ranked;
+
+  // 汇总卡片
+  var totalAll = ranked.reduce(function(s,r){return s+r.allConsume;},0);
+  var totalToday = ranked.reduce(function(s,r){return s+r.todayConsume;},0);
+  var activeCnt = ranked.filter(function(r){return r.statusCode == '1';}).length;
+  var stoppedCnt = ranked.filter(function(r){return r.statusCode == '2';}).length;
+  document.getElementById('summaryCards').innerHTML = '<div class="summary-card"><div class="value">'+ranked.length+'</div><div class="label">创意总数</div></div><div class="summary-card"><div class="value">'+activeCnt+'</div><div class="label">投放中</div></div><div class="summary-card"><div class="value">'+stoppedCnt+'</div><div class="label">已停止</div></div><div class="summary-card"><div class="value">¥'+totalAll.toFixed(2)+'</div><div class="label">历史总消耗</div></div><div class="summary-card"><div class="value">¥'+totalToday.toFixed(2)+'</div><div class="label">近4日总消耗</div></div>';
+
+  // 总消耗排行表
+  var threshold = parseFloat(document.getElementById('threshold').value)||0;
+  var totalHtml = '';
+  for(i = 0; i < ranked.length; i++){
+    var r = ranked[i];
+    var rankCls = i<3 ? 'rank-'+(i+1) : 'rank-other';
+    var rowCls = '', badge = '';
+    if(r.statusCode == '2'){ rowCls = 'stopped-row'; badge = '<span class="badge badge-stopped">已停止</span>'; }
+    else if(threshold > 0 && r.todayConsume >= threshold){ rowCls = 'alert-row'; badge = '<span class="badge badge-warning">超阈值</span>'; }
+    else { badge = '<span class="badge badge-active">投放中</span>'; }
+    totalHtml += '<tr class="'+rowCls+'"><td><span class="rank '+rankCls+'">'+(i+1)+'</span></td><td>'+r.id+'</td><td>'+r.title+'</td><td class="num">¥'+r.allConsume.toFixed(2)+'</td><td class="num">'+r.allImp.toLocaleString()+'</td><td class="num">'+r.allClick.toLocaleString()+'</td><td class="num">'+r.clickRate+'%</td><td class="num">¥'+(Number(r.clickCost)||0).toFixed(4)+'</td><td>'+badge+'</td></tr>';
+  }
+  document.getElementById('totalTbody').innerHTML = totalHtml || '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px">无数据</td></tr>';
+
+  // 近4日消耗明细表
+  var dailyRows = Object.values(dailyAgg).sort(function(a,b){return b.consume - a.consume;});
+  var dailyHtml = '';
+  for(i = 0; i < dailyRows.length; i++){
+    var dr = dailyRows[i];
+    var clkRate = dr.imp > 0 ? (dr.clk/dr.imp*100).toFixed(2) : '0.00';
+    var cpc = dr.clk > 0 ? (dr.consume/dr.clk).toFixed(2) : '0.00';
+    var cpm = dr.imp > 0 ? (dr.consume/dr.imp*1000).toFixed(2) : '0.00';
+    dailyHtml += '<tr><td>'+dr.materialId+'</td><td>'+dr.title+'</td><td>'+today+'</td><td class="num">¥'+dr.consume.toFixed(2)+'</td><td class="num">'+dr.imp.toLocaleString()+'</td><td class="num">'+dr.clk.toLocaleString()+'</td><td class="num">'+clkRate+'%</td><td class="num">¥'+cpc+'</td><td class="num">¥'+cpm+'</td></tr>';
+  }
+  document.getElementById('dailyTbody').innerHTML = dailyHtml || '<tr><td colspan="9" style="text-align:center;color:#999;padding:40px">近4日无消耗数据</td></tr>';
+
+  setStatus('在线', 'online');
+  document.getElementById('lastUpdate').textContent = '最后更新: ' + new Date().toLocaleTimeString();
+}
+
+function getThreshold(){ return parseFloat(document.getElementById('threshold').value) || 0; }
+
+// ==================== 自动停止 ====================
+async function stopMaterial(matId, reason){
+  try {
+    await apiPost('/jeecg-boot/ad/adcreative/material/edit', { id: String(matId), status: '2', reason: reason || '阈值超限自动停止' });
+    stoppedIds[matId] = true;
+    log('✅ 已停止创意ID: '+matId+' ('+(reason||'阈值超限')+')', 'success');
+    return true;
+  } catch(e){ log('❌ 停止失败 '+matId+': '+e.message, 'error'); return false; }
+}
+
+async function checkThreshold(){
+  var threshold = getThreshold();
+  var auto = document.getElementById('autoStop').checked;
+  var data = window._rankedData || [];
+  if(data.length === 0){ log('无数据，请先获取数据', 'warn'); return; }
+  log('🔍 阈值检查: 近4日消耗 > ¥'+threshold, 'info');
+  var stopped = 0;
+  for(var i = 0; i < data.length; i++){
+    var r = data[i];
+    if(r.statusCode == '2' || stoppedIds[r.id]) continue;
+    if(r.todayConsume >= threshold){
+      log('⚠️ 创意 '+r.id+' ('+r.title+') 近4日消耗 ¥'+r.todayConsume.toFixed(2)+' 超阈值', 'warn');
+      if(auto){ var ok = await stopMaterial(r.id); if(ok) stopped++; }
+    }
+  }
+  if(stopped > 0) log('🏁 自动停止 '+stopped+' 个创意', 'success');
+  else if(auto) log('✅ 检查完成，无需停止', 'info');
+  await fetchAllData();
+}
+
+async function checkThresholdInternal(){
+  var threshold = getThreshold();
+  var data = window._rankedData || [];
+  if(data.length === 0) return;
+  for(var i = 0; i < data.length; i++){
+    var r = data[i];
+    if(r.statusCode == '2' || stoppedIds[r.id]) continue;
+    if(r.todayConsume >= threshold){
+      log('⚠️ 自动停止: 创意 '+r.id+' ('+r.title+') 近4日消耗 ¥'+r.todayConsume.toFixed(2)+' > ¥'+threshold, 'warn');
+      await stopMaterial(r.id);
+    }
+  }
+}
+
+// ==================== 监控循环 ====================
+var monitorTimer = null;
+
+async function startMonitor(){
+  token = document.getElementById('token').value.trim();
+  if(!token){ alert('请输入 X-Access-Token'); return; }
+  baseUrl = document.getElementById('baseUrl').value.trim().replace(/\/+$/,'');
+  advertiserId = document.getElementById('advertiserId').value.trim() || '2099';
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnStop').disabled = false;
+  document.getElementById('btnCheck').disabled = false;
+  log('🚀 启动监控...', 'info');
+  try {
+    await fetchAllData();
+    if(document.getElementById('autoStop').checked) await checkThresholdInternal();
+  } catch(e){
+    log('❌ 数据获取失败: '+e.message, 'error');
+    setStatus('错误: '+e.message.substring(0,30), 'offline');
+  }
+  var interval = parseInt(document.getElementById('interval').value) || 30;
+  monitorTimer = setInterval(async function(){
+    try {
+      await fetchAllData();
+      if(document.getElementById('autoStop').checked) await checkThresholdInternal();
+    } catch(e){ log('❌ 轮询失败: '+e.message, 'error'); setStatus('轮询错误', 'offline'); }
+  }, interval * 1000);
+  log('⏱ 轮询已启动，间隔 '+interval+' 秒', 'info');
+}
+
+function stopMonitor(){
+  if(monitorTimer){ clearInterval(monitorTimer); monitorTimer = null; }
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnStop').disabled = true;
+  document.getElementById('btnCheck').disabled = true;
+  setStatus('已停止', 'offline');
+  log('⏸ 监控已停止', 'info');
+}
+
+</script>
+</body></html>
