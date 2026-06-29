@@ -81,7 +81,7 @@ tr:hover td{background:#e6f7ff}
 </div></div></div>
 <div class="panel"><div class="panel-header">⚙️ 配置</div><div class="panel-body"><div class="form-row">
 <div class="form-group"><label>X-Access-Token *</label><input type="text" id="token" placeholder="输入 access token" style="min-width:360px"></div>
-<div class="form-group"><label>代理 / Base URL</label><input type="text" id="baseUrl" value="/api" style="min-width:240px"></div>
+<div class="form-group"><label>代理 / Base URL</label><input type="text" id="baseUrl" value="auto" style="min-width:240px"></div>
 <div class="form-group"><label>Advertiser ID</label><input type="text" id="advertiserId" value="2099" class="small"></div>
 <div class="form-group"><label>轮询间隔 (秒)</label><input type="number" id="interval" value="30" min="5" class="small"></div>
 <div class="form-group"><label>加载条数</label><input type="number" id="topN" value="5" min="1" class="small"></div>
@@ -202,6 +202,9 @@ function switchTab(tab){
 function getConfiguredBaseUrl(){
   var input = document.getElementById('baseUrl');
   var value = input ? input.value.trim() : '';
+  if(!value || value.toLowerCase() === 'auto'){
+    return window.location.protocol === 'file:' ? 'http://127.0.0.1:8899/api' : '/api';
+  }
   return (value || '/api').replace(/\/+$/,'');
 }
 
