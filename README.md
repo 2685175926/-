@@ -19,6 +19,17 @@ python app.py
 http://127.0.0.1:8899/
 ```
 
+如果你是直接双击打开 `章鱼监控.html`，需要先运行新版本地代理：
+
+```bash
+python local_proxy.py
+```
+
+新版本地代理支持：
+
+- `/api/...` 转发广告后台接口
+- `/pushplus/send` 转发 PushPlus 微信推送接口
+
 ## 部署到 Render
 
 1. 把本目录上传到一个 GitHub 仓库。
