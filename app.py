@@ -6,6 +6,7 @@ from flask import Flask, Response, jsonify, render_template, request
 
 
 TARGET_HOST = "https://ad.adintl.cn"
+PUSHPLUS_SEND_URL = "https://www.pushplus.plus/send"
 TIMEOUT_SECONDS = 30
 
 app = Flask(__name__)
@@ -70,6 +71,35 @@ def proxy(api_path):
         upstream.content,
         status=upstream.status_code,
         content_type=content_type,
+    )
+    return add_cors_headers(response)
+
+
+@app.route("/pushplus/send", methods=["POST", "OPTIONS"])
+def pushplus_send():
+    if request.method == "OPTIONS":
+        return add_cors_headers(Response(status=204))
+
+    payload = request.get_json(silent=True) or {}
+    allowed = {"token", "title", "content", "template", "channel", "topic"}
+    data = {key: payload[key] for key in allowed if key in payload}
+
+    try:
+        upstream = requests.post(
+            PUSHPLUS_SEND_URL,
+            json=data,
+            headers={"Accept": "application/json"},
+            timeout=TIMEOUT_SECONDS,
+        )
+    except requests.RequestException as exc:
+        response = jsonify({"code": 502, "msg": str(exc), "success": False})
+        response.status_code = 502
+        return add_cors_headers(response)
+
+    response = Response(
+        upstream.content,
+        status=upstream.status_code,
+        content_type=upstream.headers.get("Content-Type", "application/json"),
     )
     return add_cors_headers(response)
 

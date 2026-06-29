@@ -21,7 +21,9 @@ body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;c
 .form-group{display:flex;flex-direction:column;gap:4px}
 .form-group label{font-size:12px;color:#888;font-weight:500}
 .form-group input,.form-group select{padding:8px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;outline:none;transition:border-color .2s;min-width:120px}
+.form-group textarea{padding:8px 12px;border:1px solid #d9d9d9;border-radius:6px;font-size:13px;outline:none;transition:border-color .2s;min-width:360px;min-height:70px;resize:vertical;font-family:inherit}
 .form-group input:focus{border-color:#1890ff;box-shadow:0 0 0 2px rgba(24,144,255,.2)}
+.form-group textarea:focus{border-color:#1890ff;box-shadow:0 0 0 2px rgba(24,144,255,.2)}
 .form-group input.small{min-width:80px;width:80px}
 .btn{padding:8px 20px;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:#1890ff;color:#fff}
@@ -93,6 +95,12 @@ tr:hover td{background:#e6f7ff}
 <div class="form-group"><label>消耗阈值 (元)</label><input type="number" id="threshold" value="100" min="1" step="0.01" style="min-width:120px"></div>
 <div class="form-group"><label>检查模式</label><select id="checkMode" style="min-width:160px"><option value="4day">近4日消耗超阈值</option></select></div>
 <div class="form-group" style="align-self:flex-end"><label style="visibility:hidden">.</label><div style="display:flex;gap:8px"><button class="btn btn-success" id="btnCheck" onclick="checkThreshold()" disabled>🔍 手动检查一次</button><label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="autoStop" checked> 自动停止投放</label></div></div>
+</div></div></div>
+<div class="panel"><div class="panel-header">📨 微信推送</div><div class="panel-body"><div class="form-row">
+<div class="form-group"><label>PushPlus Token</label><input type="text" id="pushplusToken" value="801554e2cc654bfd817165d623db219f" placeholder="输入 pushplus token" style="min-width:360px"></div>
+<div class="form-group"><label>推送标题</label><input type="text" id="pushTitle" value="章鱼广告监控提醒" style="min-width:220px"></div>
+<div class="form-group"><label>推送内容</label><textarea id="pushContent" placeholder="输入要推送到微信的内容">这是一条章鱼监控测试消息</textarea></div>
+<div class="form-group" style="align-self:flex-end"><button class="btn btn-primary" id="btnPush" type="button" onclick="sendCustomPush()">发送微信推送</button></div>
 </div></div></div>
 <div class="summary-cards" id="summaryCards"></div>
 <div class="panel"><div class="panel-header"><span>📋 数据视图</span><div class="tabs" style="margin-left:24px;margin-bottom:0"><div class="tab active" onclick="switchTab('total')">总消耗排行</div><div class="tab" onclick="switchTab('daily')">近4日消耗明细</div><div class="tab" onclick="switchTab('log')">监控日志</div></div><span style="margin-left:auto;font-size:12px;color:#888" id="lastUpdate"></span></div><div class="panel-body">
@@ -210,6 +218,50 @@ function getConfiguredBaseUrl(){
     return window.location.protocol === 'file:' ? 'http://127.0.0.1:8899/api' : '/api';
   }
   return (value || '/api').replace(/\/+$/,'');
+}
+
+function getPushplusUrl(){
+  return window.location.protocol === 'file:' ? 'http://127.0.0.1:8899/pushplus/send' : '/pushplus/send';
+}
+
+async function sendPushplusMessage(title, content){
+  var pushToken = document.getElementById('pushplusToken').value.trim();
+  if(!pushToken) throw new Error('请输入 PushPlus Token');
+  var resp = await fetch(getPushplusUrl(), {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json;charset=UTF-8'
+    },
+    body: JSON.stringify({
+      token: pushToken,
+      title: title,
+      content: content,
+      template: 'html',
+      channel: 'wechat'
+    })
+  });
+  var data = await resp.json();
+  if(!(data.code == 200 || data.success === true)) throw new Error(data.msg || data.message || '推送失败');
+  return data;
+}
+
+async function sendCustomPush(){
+  var btn = document.getElementById('btnPush');
+  var title = document.getElementById('pushTitle').value.trim() || '章鱼广告监控提醒';
+  var content = document.getElementById('pushContent').value.trim();
+  if(!content){ alert('请输入推送内容'); return; }
+  if(btn) btn.disabled = true;
+  try {
+    await sendPushplusMessage(title, content.replace(/\n/g, '<br>'));
+    log('微信推送发送成功: ' + title, 'success');
+    alert('微信推送发送成功');
+  } catch(e) {
+    log('微信推送发送失败: ' + e.message, 'error');
+    alert('微信推送发送失败: ' + e.message);
+  } finally {
+    if(btn) btn.disabled = false;
+  }
 }
 
 function decodeJwtPayload(jwt){
